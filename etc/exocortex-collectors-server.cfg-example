@@ -1,0 +1,14 @@
+## Generic stuff
+instance: devel
+stats_report_interval: 360
+
+## Command and Control
+# C&C via command line
+cli_port: 31337
+cli_host: 127.0.0.1
+
+## Collectors to instantiate in this server
+collectors:
+    - {type: twitter, username: tweetdude, password: them4n}
+    - {type: gmail, username: me@gmail.com, password: 1Ru13}
+    - {type: rss, feed_url: http://myblog.mydomain.com/index.atom}

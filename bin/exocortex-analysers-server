@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+
+use common::sense;
+
+use local::lib '../lib';
+
+42;

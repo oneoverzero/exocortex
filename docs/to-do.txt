@@ -1,0 +1,2 @@
+- Replace calls to `die` with something more apropriate (everywhere in the modules!)
+
