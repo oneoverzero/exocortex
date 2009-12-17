@@ -6,7 +6,7 @@ Exocortex -- The brain outside your brain
 
 =head1 DESCRIPTION
 
-The B<Exocortex> system aims at providing a sane way to deal with the massive over-flow of information that people have to deal with in the digital age. For a discussion on the system as a whole and it's inception please reffer to L<http://exocortex.design.notes.com>.
+The B<Exocortex> system aims at providing a sane way to deal with the massive over-flow of information that people have to deal with in the digital age. For a discussion on the system as a whole and it's inception please reffer to L<http://projecthomepageyettobebuilt.com>.
 
 =head1 AUTHORS
 
