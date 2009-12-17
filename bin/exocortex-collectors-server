@@ -3,7 +3,7 @@
 use common::sense;
 
 use FindBin;
-use local::lib '/servers';
+#use local::lib '/servers';
 use lib '/servers/sites/exocortex.nunonunes.org/lib/perl5',
   "$FindBin::Bin/../lib/perl5";
 
