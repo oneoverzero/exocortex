@@ -81,6 +81,7 @@ sub new {
                 DEBUG                 => $self->DEBUG,
                 username              => $col->{username},
                 password              => $col->{password},
+                status_type           => $col->{status_type},
                 stats_report_interval => 0,
                 on_msg_received       => sub {
                     $self->deal_with_message(@_);
