@@ -65,7 +65,7 @@ sub new {
                     $self->on_msg_received->(
                         message    => $pp_status->{text},
                         date       => $tweet_date,
-                        type       => 'twitter',
+                        type       => 'tweet',
                         extra_data => $raw_status
                     );
                 }

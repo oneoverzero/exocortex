@@ -90,6 +90,22 @@ sub new {
                 }
             );
         }
+        elsif ( $col->{type} eq 'gmail' ) {
+            $self->log( 2,
+                    __PACKAGE__
+                  . ": Creating a Gmail collector for user "
+                  . $col->{username} );
+            use Exocortex::Collector::Mail::Gmail;
+            $col->{bot} = Exocortex::Collector::Mail::Gmail->new(
+                DEBUG                 => $self->DEBUG,
+                username              => $col->{username},
+                password              => $col->{password},
+                stats_report_interval => 0,
+                on_msg_received       => sub {
+                    $self->deal_with_message(@_);
+                }
+            );
+        }
         else {
             $self->log( 2,
                     __PACKAGE__
@@ -143,7 +159,7 @@ sub start {
                     __PACKAGE__
                   . ": Ignoring un-initialized "
                   . $col->{type}
-                  . "collector" );
+                  . " collector" );
         }
     }
     $self->main_loop->wait;
@@ -195,10 +211,11 @@ sub deal_with_message {
     my %args = @_;
 
     $self->stats_data->{messages}{to_print}{total}++;
-    # Actually do something withthe freaking tweet!
+
+    # Actually do something with the freaking message!
     $self->log( 1,
         __PACKAGE__ . ": Got a new message of type \"" . $args{type} . "\"" );
-    $self->log( 3, __PACKAGE__ . ": " . Dumper \%args );
+    $self->log( 3, __PACKAGE__ . ": Parameters received for the message: " . Dumper \%args );
 }
 
 sub all_stats_to_string {
@@ -236,7 +253,7 @@ sub dump_all_stats_to_log {
     foreach my $col ( @{ $self->collectors } ) {
         if ( $col->{bot} ) {
             $self->log( 0,
-                __PACKAGE__ . ": " . $col->{type} . "collector stats:" );
+                __PACKAGE__ . ": " . $col->{type} . " collector stats:" );
             my $col_stats = $col->{bot}->stats_dump_to_log;
         }
     }
