@@ -77,10 +77,14 @@ sub new {
                   . ": Creating a Twitter collector of type "
                   . $col->{status_type}
                   . " for user "
-                  . $col->{username} );
+                  . $col->{username}
+                  . " with ID \""
+                  . $col->{id}
+                  . "\"" );
             use Exocortex::Collector::Twitter;
             $col->{bot} = Exocortex::Collector::Twitter->new(
                 DEBUG                 => $self->DEBUG,
+                id                    => $col->{id},
                 username              => $col->{username},
                 password              => $col->{password},
                 status_type           => $col->{status_type},
@@ -94,10 +98,14 @@ sub new {
             $self->log( 2,
                     __PACKAGE__
                   . ": Creating a Gmail collector for user "
-                  . $col->{username} );
+                  . $col->{username}
+                  . " with ID \""
+                  . $col->{id}
+                  . "\"" );
             use Exocortex::Collector::Mail::Gmail;
             $col->{bot} = Exocortex::Collector::Mail::Gmail->new(
                 DEBUG                 => $self->DEBUG,
+                id                    => $col->{id},
                 username              => $col->{username},
                 password              => $col->{password},
                 stats_report_interval => 0,
@@ -215,7 +223,10 @@ sub deal_with_message {
     # Actually do something with the freaking message!
     $self->log( 1,
         __PACKAGE__ . ": Got a new message of type \"" . $args{type} . "\"" );
-    $self->log( 3, __PACKAGE__ . ": Parameters received for the message: " . Dumper \%args );
+    $self->log( 3,
+            __PACKAGE__
+          . ": Parameters received for the message: "
+          . Dumper \%args );
 }
 
 sub all_stats_to_string {

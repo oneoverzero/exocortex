@@ -9,6 +9,7 @@ use AnyEvent::Twitter;
 
 # Local stuff
 __PACKAGE__->attr('bot');
+__PACKAGE__->attr('id');
 __PACKAGE__->attr('username');
 __PACKAGE__->attr('password');
 __PACKAGE__->attr('status_type');
@@ -24,6 +25,8 @@ sub new {
 
     die __PACKAGE__ . ": Missing required param: username\n"
       unless $self->username;
+    die __PACKAGE__ . ": Missing required param: id\n"
+      unless $self->id;
     die __PACKAGE__ . ": Missing required param: password\n"
       unless $self->password;
     die __PACKAGE__ . ": Missing required param: status_type\n"
@@ -45,7 +48,8 @@ sub new {
             error => sub {
                 my ( $twitter_bot, $error ) = @_;
 
-                $self->log( 0, __PACKAGE__ . ": Error: $error" );
+                $self->log( 0,
+                    __PACKAGE__ . " (" . $self->id . "): Error: $error" );
                 $self->stats_data->{errors}{to_print}{total}++;
                 $self->stats_data->{errors}{$error}++;
             },
@@ -78,7 +82,8 @@ sub new {
             error => sub {
                 my ( $twitter_bot, $error ) = @_;
 
-                $self->log( 0, __PACKAGE__ . ": Error: $error" );
+                $self->log( 0,
+                    __PACKAGE__ . " (" . $self->id . "): Error: $error" );
                 $self->stats_data->{errors}{to_print}{total}++;
                 $self->stats_data->{errors}{$error}++;
             },
@@ -90,7 +95,7 @@ sub new {
                     $self->stats_data->{tweets}{to_print}{received}++;
                     my $tweet_date = $pp_status->{timestamp};
 
-                    #TODO: Make it configurable?
+                    #TODO: Make it configurable!
                     if ( time - $tweet_date > 6 * 3600 ) {
                         $self->stats_data->{tweets}{to_print}{ignored}++;
                         next;
@@ -107,12 +112,14 @@ sub new {
         $self->bot->receive_statuses_friends(0);
     }
 
+    $self->log( 3, __PACKAGE__ . " (" . $self->id . "): Got created" );
     return $self;
 }
 
 sub start {
     my $self = shift;
 
+    $self->log( 3, __PACKAGE__ . " (" . $self->id . "): Starting up" );
     $self->stats_setup;
     $self->bot->start;
 }

@@ -9,7 +9,7 @@ cli_host: 127.0.0.1
 
 ## Collectors to instantiate in this server
 collectors:
-    - {type: twitter, username: tweetdude, password: them4n, status_type: mentions}
-    - {type: twitter, username: tweetdude, password: them4n, status_type: friends}
-    - {type: gmail, username: me@gmail.com, password: 1Ru13}
-    - {type: rss, feed_url: http://myblog.mydomain.com/index.atom}
+    - {type: twitter, id:my_unique_id_1, username: tweetdude, password: them4n, status_type: mentions}
+    - {type: twitter, id:my_unique_id_2, username: tweetdude, password: them4n, status_type: friends}
+    - {type: gmail, id:my_unique_id_3, username: me@gmail.com, password: 1Ru13}
+    - {type: rss, id:my_unique_id_4, feed_url: http://myblog.mydomain.com/index.atom}
