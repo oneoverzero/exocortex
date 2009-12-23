@@ -6,7 +6,39 @@ Exocortex -- The brain outside your brain
 
 =head1 DESCRIPTION
 
-The B<Exocortex> system aims at providing a sane way to deal with the massive over-flow of information that people have to deal with in the digital age. For a discussion on the system as a whole and it's inception please reffer to L<http://projecthomepageyettobebuilt.com>.
+The B<Exocortex> system aims at providing a sane way to deal with the massive over-flow of information that people have to deal with in the digital age. For a discussion on the ideas and reasoning behind the system as a whole, as well as a view into it's inception, please reffer to the project's homepage soon to be created. TODO: point to the project's homepage.
+
+The system is comprised of several sub-systems, which we will describe in the next sections of this document.
+
+=head2 Collectors
+
+The B<Collectors> sub-system is responsible for gathering the information you wish the whole system to process for you.
+
+There are collectors for things like B<Twitter>, B<Gmail accounts>, B<IMAP mail accounts>, B<RSS feeds> and many others.
+
+The system aims at being flexible enough so that you can implement your own collectors easily and plug them in to our own B<Collectors server> or even to write a collector that runs completely out of this framework and that simply sends it's collected messages for the rest of the B<Exocortex> system to incorporate and process them.
+
+In this implementation of B<Exocortex>, the B<Collectors> take up the C<Exocortex::Collector> namespace (ex: C<Exocortex::Collector::Twitter>, C<Exocortex::Collector::Mail::Gmail>). See the documentation for L<Exocortex::Collector> for more details.
+
+=head2 Messaging
+
+The B<Messaging> sub-system is responsible for disseminating the information about the messages and events that occur within the system to all parts of it.
+This sub-system works on a I<publish-subscribe> model, so that each component may subscribe to a given "type" of events that are relevant to it and when another component publishes something about an event that belongs to that "type", each and every component that registered to be warned about such events gets notified of this.
+As an example that will help clarify this concept, consider an B<Analiser> that knows how to deal with all kinds of mail messages. This B<Analiser>, when it starts up, registers itself on the B<Messaging> system as being interested on all events regarding to "mail messages" (it is in effect I<subscribing> to this type of messages). After this, whenever a B<Collector> receives a new mail message or a B<Buttler> states it's interest or lack thereof on a specific mail message, the B<Analiser> that subscribed to all types of events related to mail messages will get notified of these events.
+
+The B<Messaging> system implements the B<OpenAMQ> messaging standard and has the following entry-points that the other subsystems or components may use to interact with it:
+
+=over
+
+=item TODO: Document the available entry points
+
+=back
+
+
+Here also, the system aims at being flexible enough so that you can implement your own sub-systems or components and run them elsewhere and still interconnect with our system. The B<Messaging> sub-system is the one that makes this possible by offering external entry points for data exchange for trusted outside implementations.
+
+In this implementation of B<Exocortex>, the interface to the B<Messaging> sub-system is implemented under the C<Exocortex::Messaging> namespace. See L<Exocortex::Messaging> for more details.
+
 
 =head1 AUTHORS
 
