@@ -74,7 +74,9 @@ sub new {
         if ( $col->{type} eq 'twitter' ) {
             $self->log( 2,
                     __PACKAGE__
-                  . ": Creating a Twitter collector for user "
+                  . ": Creating a Twitter collector of type "
+                  . $col->{status_type}
+                  . " for user "
                   . $col->{username} );
             use Exocortex::Collector::Twitter;
             $col->{bot} = Exocortex::Collector::Twitter->new(

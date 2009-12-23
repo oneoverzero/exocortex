@@ -1,2 +1,3 @@
 - Replace calls to `die` with something more apropriate (everywhere in the modules!)
+- Implement the functionality lacking in AnyEvent::Twitter (statuses type) and add support for it in Exocortex::Collector::Twitter
 
