@@ -6,7 +6,7 @@ Exocortex -- The brain outside your brain
 
 =head1 DESCRIPTION
 
-The B<Exocortex> system aims at providing a sane way to deal with the massive over-flow of information that people have to deal with in the digital age. For a discussion on the ideas and reasoning behind the system as a whole, as well as a view into it's inception, please reffer to the project's homepage soon to be created. TODO: point to the project's homepage.
+The B<Exocortex> system aims at providing a sane way to deal with the massive over-flow of information that people have to deal with in the digital age. For a discussion on the ideas and reasoning behind the project, as well as a view into it's inception, please reffer to the project's homepage soon to be created. TODO: point to the project's homepage.
 
 The system is comprised of several sub-systems, which we will describe in the next sections of this document.
 
@@ -16,7 +16,7 @@ The B<Collectors> sub-system is responsible for gathering the information you wi
 
 There are collectors for things like B<Twitter>, B<Gmail accounts>, B<IMAP mail accounts>, B<RSS feeds> and many others.
 
-The system aims at being flexible enough so that you can implement your own collectors easily and plug them in to our own B<Collectors server> or even to write a collector that runs completely out of this framework and that simply sends it's collected messages for the rest of the B<Exocortex> system to incorporate and process them.
+The system aims at being flexible enough so that you can implement your own collectors easily and plug them in to our own B<Collectors server>, or even to allow you to write a collector that runs completely out of this framework and simply sends the messages it collects to a separate B<Exocortex> implementation, for the it to incorporate and process them.
 
 In this implementation of B<Exocortex>, the B<Collectors> take up the C<Exocortex::Collector> namespace (ex: C<Exocortex::Collector::Twitter>, C<Exocortex::Collector::Mail::Gmail>). See the documentation for L<Exocortex::Collector> for more details.
 
@@ -24,7 +24,7 @@ In this implementation of B<Exocortex>, the B<Collectors> take up the C<Exocorte
 
 The B<Messaging> sub-system is responsible for disseminating the information about the messages and events that occur within the system to all parts of it.
 This sub-system works on a I<publish-subscribe> model, so that each component may subscribe to a given "type" of events that are relevant to it and when another component publishes something about an event that belongs to that "type", each and every component that registered to be warned about such events gets notified of this.
-As an example that will help clarify this concept, consider an B<Analiser> that knows how to deal with all kinds of mail messages. This B<Analiser>, when it starts up, registers itself on the B<Messaging> system as being interested on all events regarding to "mail messages" (it is in effect I<subscribing> to this type of messages). After this, whenever a B<Collector> receives a new mail message or a B<Buttler> states it's interest or lack thereof on a specific mail message, the B<Analiser> that subscribed to all types of events related to mail messages will get notified of these events.
+As an example that will help clarify this concept, consider an B<Analiser> that knows how to deal with all kinds of mail messages. This B<Analiser>, when it starts up, registers itself on the B<Messaging> system as being interested on all events that regard to "mail messages" (it is in effect I<subscribing> to this type of messages). After this step, whenever a B<Collector> receives a new mail message or a B<Butler> states it's interest or lack thereof on a specific mail message, the B<Analiser> that subscribed to all types of events related to mail messages will get notified of these events.
 
 The B<Messaging> system implements the B<OpenAMQ> messaging standard and has the following entry-points that the other subsystems or components may use to interact with it:
 
@@ -34,11 +34,27 @@ The B<Messaging> system implements the B<OpenAMQ> messaging standard and has the
 
 =back
 
-
-Here also, the system aims at being flexible enough so that you can implement your own sub-systems or components and run them elsewhere and still interconnect with our system. The B<Messaging> sub-system is the one that makes this possible by offering external entry points for data exchange for trusted outside implementations.
+Here also, the system aims at being flexible enough so that you can implement your own sub-systems or components and run them elsewhere and still interconnect with anotherimplementation of the system. The B<Messaging> sub-system is the one that makes this possible by offering external entry points for data exchange for trusted outside implementations.
 
 In this implementation of B<Exocortex>, the interface to the B<Messaging> sub-system is implemented under the C<Exocortex::Messaging> namespace. See L<Exocortex::Messaging> for more details.
 
+=head2 Analisers
+
+B<Analisers> are the "special sauce" of the whole B<Exocortex> system, as they are the ones that must determine how each message gathered by any the B<Collectors> ranks on the two relevant vectors: B<importance> and B<urgency> (for a discussion on why we use these two concepts on our ranking system and how they are different, but complementary, please refer to the project's homepage.)
+
+The B<Analisers> can also be implemented outside of a full B<Exocortex> instance and interconnect with one over the Internet, by connecting to an available entry-point on it's B<Messaging> cloud.
+
+In this implementation of the B<Exocortex>, the B<Analisers> will be implemented under the C<Exocortex::Analiser> namespace. Please read the L<Exocortex::Analiser> document for more details.
+
+=Butlers
+
+The B<Butler> sub-system is responsible for "representing" the human users of the system by acting on their behalf and taking the decisions about how to interact with them at any given time.
+
+Whenever a message is analised and ranked on it's B<importance> and B<urgency> for a given user, the B<Butler> must then decide, given the user's known B<availability>, B<interests>, and possibly other factors, wether to warn the user of the newly arrived message or maybe to simply make sure that it gets sent to the user's reading queue or maybe even to just drop it.
+
+In deciding it's course of action the B<Butler> must take in to account the multiple possible rankings coming in from different B<Analisers> and how to weight them all to arrive at the final B<importance> and B<urgency> values for this particular massage for this particular user. Is also must factor in the user's perceived availability and the channels available at the time to reach the user. (e.i. if an extremely B<urgent> message arrives, contact the user via SMS, even if he is offline on any IM platform. On the other hand, if the message is B<important> but not B<urgent> it may decide to wait until the user is online and "available" before alerting her).
+
+The B<Butler> sub-system takes up the C<Exocortex::Butler> namespace and is documented in the L<Exocortex::Butler> document.
 
 =head1 AUTHORS
 
