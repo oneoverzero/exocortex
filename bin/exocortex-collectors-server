@@ -43,6 +43,9 @@ my $collector_server = Exocortex::Collector::Server->new(
     cli_port => $config->get('cli_port'),
     cli_host => $config->get('cli_host'),
 
+    # Messaging stuff
+    messaging_service => $config->get('messaging_service'),
+
     # Collectors to instantiate
     collectors => $config->get('collectors'),
 );

@@ -8,6 +8,7 @@ use base 'Exocortex::Goodies';
 use base 'Exocortex::Stats';
 
 use Exocortex::Comms::CLI;
+use Exocortex::Messaging;
 
 use AnyEvent;
 use Data::Dumper;
@@ -27,6 +28,10 @@ __PACKAGE__->attr('cli_bot');
 # Collectors
 __PACKAGE__->attr('collectors');
 
+# Messaging
+__PACKAGE__->attr('messaging');
+__PACKAGE__->attr('messaging_service');
+
 sub new {
     my $class = shift;
 
@@ -40,6 +45,9 @@ sub new {
       unless $self->cli_port;
     die __PACKAGE__ . ": Missing required param: stats_report_interval\n"
       unless $self->stats_report_interval;
+    die __PACKAGE__ . ": Missing required param: messaging_service\n"
+      unless $self->messaging_service;
+
     $self->cli_bot(
         Exocortex::Comms::CLI->new(
             DEBUG                 => $self->DEBUG,
@@ -51,6 +59,15 @@ sub new {
                 $self->deal_with_command(@_);
             },
         ),
+    );
+
+    $self->messaging(
+        Exocortex::Messaging->new(
+	    DEBUG => $self->DEBUG,
+            stats_report_interval => 0,
+            messaging_service => $self->messaging_service,
+	    component_id => 'Exocortex::Collector::Server',
+	),
     );
 
     $self->signal_watchers(
@@ -153,6 +170,7 @@ sub start {
     my $loop = AnyEvent->condvar;
     $self->main_loop($loop);
     $self->cli_bot->start;
+    $self->messaging->start;
     foreach my $col ( @{ $self->collectors } ) {
         if ( $col->{bot} ) {
             $self->log( 2,
@@ -220,13 +238,14 @@ sub deal_with_message {
 
     $self->stats_data->{messages}{to_print}{total}++;
 
-    # Actually do something with the freaking message!
     $self->log( 1,
         __PACKAGE__ . ": Got a new message of type \"" . $args{type} . "\"" );
     $self->log( 3,
             __PACKAGE__
           . ": Parameters received for the message: "
           . Dumper \%args );
+    # TODO: Actually do something with the freaking message!
+    $self->messaging->send_message('Type: '.$args{type});
 }
 
 sub all_stats_to_string {
@@ -240,6 +259,10 @@ sub all_stats_to_string {
     my $cli_stats = $self->cli_bot->stats_to_string;
     if ($cli_stats) {
         $stats .= "cli: $cli_stats\n";
+    }
+    my $messaging_stats = $self->messaging->stats_to_string;
+    if ($messaging_stats) {
+        $stats .= "messaging: $messaging_stats\n";
     }
     foreach my $col ( @{ $self->collectors } ) {
         if ( $col->{bot} ) {
@@ -261,6 +284,8 @@ sub dump_all_stats_to_log {
     $self->stats_dump_to_log;
     $self->log( 0, __PACKAGE__ . ": cli bot stats:" );
     $self->cli_bot->stats_dump_to_log;
+    $self->log( 0, __PACKAGE__ . ": messaging stats:" );
+    $self->messaging->stats_dump_to_log;
     foreach my $col ( @{ $self->collectors } ) {
         if ( $col->{bot} ) {
             $self->log( 0,
