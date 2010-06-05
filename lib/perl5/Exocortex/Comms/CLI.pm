@@ -1,52 +1,27 @@
 package Exocortex::Comms::CLI;
 
 use common::sense;
+use Moose;
 
-use base 'Mojo::Base';
-use base 'Exocortex::Log';
-use base 'Exocortex::Stats';
+with 'Exocortex::Log', 'Exocortex::Stats';
 
 use AnyEvent;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
 
-__PACKAGE__->attr('DEBUG');
-__PACKAGE__->attr('server');
-__PACKAGE__->attr('host');
-__PACKAGE__->attr('port');
-__PACKAGE__->attr('instance');
-__PACKAGE__->attr('on_msg_received');
-__PACKAGE__->attr( 'connections' => 0 );
+has 'server'          => ( is => 'rw' );
+has 'host'            => ( is => 'ro', isa => 'Str', required => 1 );
+has 'port'            => ( is => 'ro', isa => 'Str', required => 1 );
+has 'instance'        => ( is => 'ro', isa => 'Str', required => 1 );
+has 'on_msg_received' => ( is => 'ro', isa => 'CodeRef', required => 1 );
+has 'connections'     => ( is => 'rw', isa => 'Int', default => 0 );
 
-sub new {
-    my $class = shift;
-
-    my $self = $class->SUPER::new(@_);
-    bless $self, $class;
-
-    # Check required params
-    die __PACKAGE__ . ": Missing required param: host\n"
-      unless $self->host;
-    die __PACKAGE__ . ": Missing required param: port\n"
-      unless $self->port;
-    die __PACKAGE__ . ": Missing required param: instance\n"
-      unless $self->instance;
-    die __PACKAGE__ . ": Missing required param: on_msg_received\n"
-      unless ( $self->on_msg_received
-        && ( ref( $self->on_msg_received ) eq 'CODE' ) );
-
-    return $self;
-}
-
-sub start {
+sub BUILD {
     my $self = shift;
 
     $self->log( 1, __PACKAGE__ . ": Starting up\n" );
     $self->log( 1,
         __PACKAGE__ . ": Settings: " . "port: \"" . $self->port . "\"\n" );
-
-    # Initialize stuff
-    $self->stats_setup;
 
     my $server = tcp_server $self->host, $self->port, sub {
         my ( $fh, $host, $port ) = @_;
@@ -80,6 +55,7 @@ sub start {
         );
     };
 
+    $self->stats_init;
     $self->server($server);
 }
 
@@ -108,15 +84,18 @@ sub _deal_with_request {
 
     $self->log( 1, __PACKAGE__ . ": got request: \"$request\"" );
     $self->stats_data->{commands}{to_print}{received}++;
-    my $reply = $self->on_msg_received->( $request );
+    my $reply = $self->on_msg_received->($request);
     $handle->push_write("$reply\n");
 }
 
 sub set_debug {
-    my $self = shift;
+    my $self  = shift;
     my $debug = shift;
 
     $self->DEBUG($debug);
 }
+
+__PACKAGE__->meta->make_immutable;
+no Moose;
 
 42;

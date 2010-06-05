@@ -1,7 +1,10 @@
 package Exocortex::Messaging::OpenAMQ;
 
-use common::sense;
+use Moose;
 
-use base 'Exocortex::Messaging::Base';
+with 'Exocortex::Messaging';
+
+__PACKAGE__->meta->make_immutable;
+no Moose;
 
 42;

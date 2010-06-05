@@ -8,7 +8,6 @@ use lib '/servers/sites/exocortex.nunonunes.org/lib/perl5',
   "$FindBin::Bin/../lib/perl5";
 
 use Exocortex::Collector::Server;
-use Exocortex::Log;
 use Getopt::Long;
 use YAML::AppConfig;
 use Data::Dumper;
@@ -23,16 +22,14 @@ my $result = GetOptions(
     "config_file=s" => \$config_file,
 );
 
-my $logger = Exocortex::Log->new( DEBUG => $DEBUG );
-$logger->log( 0, "$0: Booting up with debug level $DEBUG" );
+print STDERR "$0: Booting up with debug level $DEBUG\n";
 
-$logger->log( 1, "$0: Going to read configuration from \"$config_file\"" );
+print STDERR "$0: Going to read configuration from \"$config_file\"\n" if $DEBUG>=1;
 
 my $config = YAML::AppConfig->new( file => $config_file )
   || die "$0: Could not read config file: $!\n";
 
-$logger->log( 2,
-    "$0: Configuration read from file:\n" . Dumper $config->config );
+print STDERR "$0: Configuration read from file:\n" . Dumper $config->config if $DEBUG>=2;
 
 my $collector_server = Exocortex::Collector::Server->new(
     DEBUG                 => $DEBUG,
@@ -50,5 +47,4 @@ my $collector_server = Exocortex::Collector::Server->new(
     collectors => $config->get('collectors'),
 );
 
-$logger->log( 1, "$0: Launching server" );
-$collector_server->start;
+print STDERR "$0: Exiting server\n";

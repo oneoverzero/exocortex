@@ -1,13 +1,14 @@
 package Exocortex::Goodies;
 
 use common::sense;
+use Moose::Role;
 
 sub _uptime {
     my $self = shift;
 
     my $up_since = shift;
 
-    my $delta  = time - $self->up_since;
+    my $delta  = time - $self->stats_up_since;
     my $years  = int( $delta / ( 60 * 60 * 24 * 365 ) );
     my $remain = $delta % ( 60 * 60 * 24 * 365 );
     my $months = int( $remain / ( 60 * 60 * 24 * 30 ) );
@@ -39,4 +40,5 @@ sub _uptime {
     }
 }
 
+no Moose::Role;
 42;

@@ -1,23 +1,10 @@
 package Exocortex::Collector;
 
-use base 'Mojo::Base';
-use base 'Exocortex::Log';
-use base 'Exocortex::Stats';
+use Moose::Role;
+with 'Exocortex::Log', 'Exocortex::Stats';
 
-use common::sense;
+has 'id' => ( is => 'rw', isa => 'Str', required => 1 );
 
-# Local stuff
-__PACKAGE__->attr( 'DEBUG' => 0 );
-
-sub start {
-    die "You must overide the 'start' method in your collector";
-}
-
-sub set_debug {
-    my $self = shift;
-    my $debug = shift;
-
-    $self->DEBUG($debug);
-}
+no Moose::Role;
 
 42;

@@ -1,75 +1,45 @@
 package Exocortex::Collector::Server;
 
 use common::sense;
+use Moose;
 
-use base 'Mojo::Base';
-use base 'Exocortex::Log';
-use base 'Exocortex::Goodies';
-use base 'Exocortex::Stats';
+with 'Exocortex::Log', 'Exocortex::Stats', 'Exocortex::Goodies';
 
 use Exocortex::Comms::CLI;
-use Exocortex::Messaging;
 
 use AnyEvent;
 use Data::Dumper;
 
 # Local stuff
-__PACKAGE__->attr( 'DEBUG' => 0 );
-__PACKAGE__->attr('main_loop');
-__PACKAGE__->attr('stats_report_interval');
-__PACKAGE__->attr('instance');
-__PACKAGE__->attr('signal_watchers');
+has 'main_loop'       => ( is => 'rw' );
+has 'instance'        => ( is => 'rw', isa => 'Str', required => 1 );
+has 'signal_watchers' => ( is => 'rw' );
 
 # Command Line Interface stuff
-__PACKAGE__->attr('cli_port');
-__PACKAGE__->attr('cli_host');
-__PACKAGE__->attr('cli_bot');
+has 'cli_host' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'cli_port' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'cli_bot'  => ( is => 'rw' );
 
 # Collectors
-__PACKAGE__->attr('collectors');
+has 'collectors' => ( is => 'rw', isa => 'ArrayRef' );
 
 # Messaging
-__PACKAGE__->attr('messaging');
-__PACKAGE__->attr('messaging_service');
+has 'messaging' => ( is => 'rw' );
+has 'messaging_service' => ( is => 'rw', isa => 'Str', required => 1 );
 
-sub new {
-    my $class = shift;
+sub BUILD {
+    my $self = shift;
 
-    my $self = $class->SUPER::new(@_);
-    bless $self, $class;
+    $self->log( 1, __PACKAGE__ . ": Starting run" );
+    $self->log( 3, __PACKAGE__ . ": Parameters:\n" . Dumper($self) );
+    if ( $self->DEBUG > 1 ) {
+        AnyEvent::post_detect {
+            $self->log( 1,
+                __PACKAGE__ . ": Event model is \"$AnyEvent::MODEL\"" );
+        }
+    }
 
-    # Check mandatory parameters
-    die __PACKAGE__ . ": Missing required param: instance\n"
-      unless $self->instance;
-    die __PACKAGE__ . ": Missing required param: cli_port\n"
-      unless $self->cli_port;
-    die __PACKAGE__ . ": Missing required param: stats_report_interval\n"
-      unless $self->stats_report_interval;
-    die __PACKAGE__ . ": Missing required param: messaging_service\n"
-      unless $self->messaging_service;
-
-    $self->cli_bot(
-        Exocortex::Comms::CLI->new(
-            DEBUG                 => $self->DEBUG,
-            stats_report_interval => 0,
-            host                  => $self->cli_host,
-            port                  => $self->cli_port,
-            instance              => $self->instance,
-            on_msg_received       => sub {
-                $self->deal_with_command(@_);
-            },
-        ),
-    );
-
-    $self->messaging(
-        Exocortex::Messaging->new(
-	    DEBUG => $self->DEBUG,
-            stats_report_interval => 0,
-            messaging_service => $self->messaging_service,
-	    component_id => 'Exocortex::Collector::Server',
-	),
-    );
-
+    # Trap all signals we're interested in
     $self->signal_watchers(
         (
             AnyEvent->signal(
@@ -86,6 +56,50 @@ sub new {
             ),
         ),
     );
+
+    # Stats
+    $self->stats_init;
+
+    # Setup recurrent stats reporting
+    if ( $self->stats_report_interval && ( $self->stats_report_interval > 0 ) )
+    {
+        $self->stats_report_callback(
+            sub {
+                $self->dump_all_stats_to_log;
+            }
+        );
+    }
+
+    # Setup and initialize other bits and pieces
+    $self->stats_up_since(time);
+    my $loop = AnyEvent->condvar;
+    $self->main_loop($loop);
+
+    # Create and launch all types of servers, bots, etc.
+    $self->cli_bot(
+        Exocortex::Comms::CLI->new(
+            DEBUG                 => $self->DEBUG,
+            stats_report_interval => 0,
+            host                  => $self->cli_host,
+            port                  => $self->cli_port,
+            instance              => $self->instance,
+            on_msg_received       => sub {
+                $self->deal_with_command(@_);
+            },
+        ),
+    );
+
+    if ( $self->messaging_service eq 'RabbitMQ' ) {
+        use Exocortex::Messaging::RabbitMQ;
+        $self->messaging(
+            Exocortex::Messaging::RabbitMQ->new(
+                DEBUG                 => $self->DEBUG,
+                stats_report_interval => 0,
+                component_id          => 'Exocortex::Collector::Server',
+
+            ),
+        );
+    }
 
     foreach my $col ( @{ $self->collectors } ) {
         if ( $col->{type} eq 'twitter' ) {
@@ -114,13 +128,13 @@ sub new {
         elsif ( $col->{type} eq 'gmail' ) {
             $self->log( 2,
                     __PACKAGE__
-                  . ": Creating a Gmail collector for user "
+                  . ": Creating a GMail collector for user "
                   . $col->{username}
                   . " with ID \""
                   . $col->{id}
                   . "\"" );
-            use Exocortex::Collector::Mail::Gmail;
-            $col->{bot} = Exocortex::Collector::Mail::Gmail->new(
+            use Exocortex::Collector::Mail::GMail;
+            $col->{bot} = Exocortex::Collector::Mail::GMail->new(
                 DEBUG                 => $self->DEBUG,
                 id                    => $col->{id},
                 username              => $col->{username},
@@ -139,55 +153,6 @@ sub new {
         }
     }
 
-    return $self;
-}
-
-sub start {
-    my $self = shift;
-
-    $self->log( 1, __PACKAGE__ . ": Starting run" );
-    $self->log( 3, __PACKAGE__ . ": Parameters:\n" . Dumper($self) );
-    if ( $self->DEBUG > 1 ) {
-        AnyEvent::post_detect {
-            $self->log( 1,
-                __PACKAGE__ . ": Event model is \"$AnyEvent::MODEL\"" );
-        }
-    }
-
-    # Setup recurrent stats reporting
-    if ( $self->stats_report_interval && ( $self->stats_report_interval > 0 ) )
-    {
-        $self->stats_report_callback(
-            sub {
-                $self->dump_all_stats_to_log;
-            }
-        );
-    }
-
-    # Setup and initialize other bits and pieces
-    $self->up_since(time);
-    $self->stats_setup;
-    my $loop = AnyEvent->condvar;
-    $self->main_loop($loop);
-    $self->cli_bot->start;
-    $self->messaging->start;
-    foreach my $col ( @{ $self->collectors } ) {
-        if ( $col->{bot} ) {
-            $self->log( 2,
-                    __PACKAGE__
-                  . ": Starting up a "
-                  . $col->{type}
-                  . " collector" );
-            $col->{bot}->start;
-        }
-        else {
-            $self->log( 2,
-                    __PACKAGE__
-                  . ": Ignoring un-initialized "
-                  . $col->{type}
-                  . " collector" );
-        }
-    }
     $self->main_loop->wait;
 
     $self->dump_all_stats_to_log;
@@ -244,14 +209,16 @@ sub deal_with_message {
             __PACKAGE__
           . ": Parameters received for the message: "
           . Dumper \%args );
+
     # TODO: Actually do something with the freaking message!
-    $self->messaging->send_message('Type: '.$args{type});
+    $self->messaging->send_message( 'Type: ' . $args{type} );
 }
 
 sub all_stats_to_string {
     my $self = shift;
 
-    my $stats = "Server uptime: " . $self->_uptime( $self->up_since ) . "\n";
+    my $stats =
+      "Server uptime: " . $self->_uptime( $self->stats_up_since ) . "\n";
     my $server_stats = $self->stats_to_string;
     if ($server_stats) {
         $stats .= "server $server_stats\n";
@@ -282,14 +249,18 @@ sub dump_all_stats_to_log {
     $self->log( 0, __PACKAGE__ . ": Uptime: " . $self->_uptime );
     $self->log( 0, __PACKAGE__ . ": Server stats:" );
     $self->stats_dump_to_log;
-    $self->log( 0, __PACKAGE__ . ": cli bot stats:" );
+    $self->log( 0, __PACKAGE__ . ": CLI bot stats:" );
     $self->cli_bot->stats_dump_to_log;
-    $self->log( 0, __PACKAGE__ . ": messaging stats:" );
+    $self->log( 0, __PACKAGE__ . ": Messaging stats:" );
     $self->messaging->stats_dump_to_log;
     foreach my $col ( @{ $self->collectors } ) {
         if ( $col->{bot} ) {
             $self->log( 0,
-                __PACKAGE__ . ": " . $col->{type} . " collector stats:" );
+                    __PACKAGE__ . ": "
+                  . $col->{type}
+                  . " collector ("
+                  . $col->{id}
+                  . ") stats:" );
             my $col_stats = $col->{bot}->stats_dump_to_log;
         }
     }
@@ -309,6 +280,9 @@ sub set_debug {
         }
     }
 }
+
+__PACKAGE__->meta->make_immutable;
+no Moose;
 
 42;
 

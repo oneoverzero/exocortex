@@ -1,25 +1,16 @@
 package Exocortex::Messaging;
 
-use common::sense;
+use Moose::Role;
 
-sub new {
-    my $class = shift;
-    my %params = @_;
+with 'Exocortex::Log', 'Exocortex::Stats';
 
-    # Check mandatory parameters
+requires 'send_message';
 
-    my $messaging_service = $params{messaging_service};
-    die __PACKAGE__ . ": Missing required param: messaging_service\n"
-          unless $messaging_service;
+has 'component_id' => (
+    is       => 'ro',
+    required => 1,
+);
 
-    if ($messaging_service eq 'RabbitMQ') {
-	use Exocortex::Messaging::RabbitMQ;
-	my $messaging = Exocortex::Messaging::RabbitMQ->new(@_);
-	return $messaging;
-    }
-    else {
-        die __PACKAGE__.": I don't know how to instantiate a messaging component for the \"$messaging_service\" service\n";
-    }
-}
+no Moose::Role;
 
 42;

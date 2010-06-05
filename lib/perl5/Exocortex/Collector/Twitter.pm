@@ -1,39 +1,20 @@
 package Exocortex::Collector::Twitter;
 
-use common::sense;
-
-use base 'Mojo::Base';
-use base 'Exocortex::Collector';
+use Moose;
+with 'Exocortex::Collector';
 
 use AnyEvent::Twitter;
 
-# Local stuff
-__PACKAGE__->attr('bot');
-__PACKAGE__->attr('id');
-__PACKAGE__->attr('username');
-__PACKAGE__->attr('password');
-__PACKAGE__->attr('status_type');
-__PACKAGE__->attr('on_msg_received');
+has 'bot'             => ( is => 'rw' );
+has 'username'        => ( is => 'rw', isa => 'Str', required => 1 );
+has 'password'        => ( is => 'rw', isa => 'Str', required => 1 );
+has 'status_type'     => ( is => 'rw', isa => 'Str', required => 1 );
+has 'on_msg_received' => ( is => 'ro', isa => 'CodeRef', required => 1 );
 
-sub new {
-    my $class = shift;
+sub BUILD {
+    my $self = shift;
 
-    my $self = $class->SUPER::new(@_);
-    bless $self, $class;
-
-    # Check mandatory parameters
-
-    die __PACKAGE__ . ": Missing required param: username\n"
-      unless $self->username;
-    die __PACKAGE__ . ": Missing required param: id\n"
-      unless $self->id;
-    die __PACKAGE__ . ": Missing required param: password\n"
-      unless $self->password;
-    die __PACKAGE__ . ": Missing required param: status_type\n"
-      unless $self->status_type;
-    die __PACKAGE__ . ": Missing required param: on_msg_received\n"
-      unless ( $self->on_msg_received
-        && ( ref( $self->on_msg_received ) eq 'CODE' ) );
+    $self->stats_init;
 
     $self->bot(
         AnyEvent::Twitter->new(
@@ -112,16 +93,11 @@ sub new {
         $self->bot->receive_statuses_friends(0);
     }
 
-    $self->log( 3, __PACKAGE__ . " (" . $self->id . "): Got created" );
-    return $self;
-}
-
-sub start {
-    my $self = shift;
-
-    $self->log( 3, __PACKAGE__ . " (" . $self->id . "): Starting up" );
-    $self->stats_setup;
     $self->bot->start;
+    $self->log( 3, __PACKAGE__ . " (" . $self->id . "): Got created" );
 }
+
+__PACKAGE__->meta->make_immutable;
+no Moose;
 
 42;

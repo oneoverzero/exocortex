@@ -1,10 +1,20 @@
 package Exocortex::Log;
 
-use common::sense;
+use Moose::Role;
 
-use base 'Mojo::Base';
+has 'DEBUG' => (
+    is      => 'rw',
+    isa     => 'Int',
+    default => 0,
+);
 
-__PACKAGE__->attr( 'DEBUG' => 0 );
+sub set_debug {
+    my $self  = shift;
+    my $debug = shift;
+
+    $self->log( 0, __PACKAGE__ . ": Setting debug to $debug" );
+    $self->DEBUG($debug);
+}
 
 sub log {
     my ( $self, $level, $string ) = @_;
@@ -13,5 +23,7 @@ sub log {
         print STDERR "$string\n";
     }
 }
+
+no Moose::Role;
 
 42;

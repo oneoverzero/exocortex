@@ -1,52 +1,56 @@
 package Exocortex::Stats;
 
-use common::sense;
-
-use base 'Mojo::Base';
-use base 'Exocortex::Log';
+use Moose::Role;
+with 'Exocortex::Log';
 
 use Data::Dumper;
 
-__PACKAGE__->attr( 'DEBUG' => 0 );
-__PACKAGE__->attr('up_since');
-__PACKAGE__->attr('stats_data');
-__PACKAGE__->attr('stats_report_interval');
-__PACKAGE__->attr('stats_report_timer');
-__PACKAGE__->attr('stats_report_callback');
-__PACKAGE__->attr('do_stats_regular_report');
+has 'stats_up_since' => (
+    is            => 'rw',
+    isa           => 'Int',
+    documentation => 'Number of seconds this service has been up for',
+);
 
-sub stats_setup {
+has 'stats_data' => (
+    is  => 'rw',
+    isa => 'HashRef',
+);
+
+has 'stats_report_interval' => (
+    is       => 'rw',
+    isa      => 'Int',
+    required => 1,
+    documentation =>
+'Number of seconds between each dump of the current stats. Set to 0 for no automatic recurrent stats dump.',
+);
+
+has 'stats_report_callback' => (
+    is            => 'rw',
+    Isa           => 'CodeRef',
+    documentation => 'Code to call when we need to report the stats',
+);
+
+has 'stats_report_timer' => ( is => 'rw', );
+
+has 'stats_do_regular_report' => ( is => 'rw', isa => 'Bool' );
+
+sub stats_init {
     my $self = shift;
 
     # Checking required params
-    die __PACKAGE__
-      . ": Missing required param: stats_report_interval (use 0 for no automated report)\n"
-      unless defined $self->stats_report_interval;
-    if ( $self->stats_report_callback
-        && ( ref( $self->stats_report_callback ) ne 'CODE' ) )
-    {
-        die __PACKAGE__
-          . ": Optional parameter 'stats_report_callback' must be a code ref\n";
-    }
-    if ( $self->stats_report_interval && ( $self->stats_report_interval > 0 ) )
-    {
-        $self->do_stats_regular_report(1);
+    if ( $self->stats_report_interval > 0 ) {
+        $self->stats_do_regular_report(1);
     }
     else {
-        $self->do_stats_regular_report(0);
+        $self->stats_do_regular_report(0);
     }
 
-    $self->log( 1,
-            __PACKAGE__
-          . ": Starting with debug level = \""
-          . $self->DEBUG
-          . "\"" );
     $self->log( 2,
             __PACKAGE__
           . ": Settings: stats_report_interval: \""
           . $self->stats_report_interval . "\"; "
-          . "do_stats_regular_report: \""
-          . $self->do_stats_regular_report
+          . "stats_do_regular_report: \""
+          . $self->stats_do_regular_report
           . "\"" );
 
     $self->stats_data( {} );
@@ -80,7 +84,7 @@ sub _reset_stats_report_timer {
     my $self = shift;
 
     $self->log( 2, __PACKAGE__ . ": Reseting the stats report timer" );
-    return unless $self->do_stats_regular_report;
+    return unless $self->stats_do_regular_report;
 
     $self->stats_report_timer(
         AnyEvent->timer(
@@ -92,5 +96,7 @@ sub _reset_stats_report_timer {
         )
     );
 }
+
+no Moose::Role;
 
 42;
