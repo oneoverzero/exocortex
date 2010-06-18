@@ -1,4 +1,4 @@
-package Exocortex::Collector::Mail::GMail;
+package Exocortex::Collector::Mail::Gmail;
 
 use Moose;
 with 'Exocortex::Collector';

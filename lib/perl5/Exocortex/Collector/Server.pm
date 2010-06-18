@@ -133,8 +133,8 @@ sub BUILD {
                   . " with ID \""
                   . $col->{id}
                   . "\"" );
-            use Exocortex::Collector::Mail::GMail;
-            $col->{bot} = Exocortex::Collector::Mail::GMail->new(
+            use Exocortex::Collector::Mail::Gmail;
+            $col->{bot} = Exocortex::Collector::Mail::Gmail->new(
                 DEBUG                 => $self->DEBUG,
                 id                    => $col->{id},
                 username              => $col->{username},

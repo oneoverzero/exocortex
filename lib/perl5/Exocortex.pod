@@ -18,7 +18,7 @@ There are collectors for things like B<Twitter>, B<GMail accounts>, B<IMAP mail 
 
 The system aims at being flexible enough so that you can implement your own collectors easily and plug them in to our own B<Collectors server>, or even to allow you to write a collector that runs completely out of this framework and simply sends the messages it collects to a separate B<Exocortex> implementation, for the it to incorporate and process them.
 
-In this implementation of B<Exocortex>, the B<Collectors> take up the C<Exocortex::Collector> namespace (ex: C<Exocortex::Collector::Twitter>, C<Exocortex::Collector::Mail::GMail>). See the documentation for L<Exocortex::Collector> for more details.
+In this implementation of B<Exocortex>, the B<Collectors> take up the C<Exocortex::Collector> namespace (ex: C<Exocortex::Collector::Twitter>, C<Exocortex::Collector::Mail::Gmail>). See the documentation for L<Exocortex::Collector> for more details.
 
 =head2 Messaging
 
