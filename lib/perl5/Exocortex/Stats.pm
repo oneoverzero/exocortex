@@ -26,7 +26,7 @@ has 'stats_report_interval' => (
 
 has 'stats_report_callback' => (
     is            => 'rw',
-    Isa           => 'CodeRef',
+    isa           => 'CodeRef',
     documentation => 'Code to call when we need to report the stats',
 );
 
