@@ -1,0 +1,160 @@
+#!/usr/bin/perl
+
+use local::lib '/servers';
+
+use common::sense;
+use URI::Escape;
+use JSON;
+use Scalar::Util 'blessed';
+use Data::Dumper;
+use Net::Twitter;
+use Amazon::SQS::Simple;
+
+my $DEBUG = $ENV{DEBUG} || 0;
+my %config = (
+    state_dir              => '../var/twitter_collector',
+    twitter_config_file    => '../etc/twitter_app.cfg',
+    amazon_sqs_config_file => '../etc/amazon_sqs.cfg',
+);
+
+my %state;
+read_state();
+
+$config{twitter_api} = read_json_conf( $config{twitter_config_file} );
+print STDERR "Twitter API config read from $config{twitter_config_file})\n"
+  if $DEBUG > 1;
+my $nt = Net::Twitter->new(
+    traits               => [qw/OAuth API::REST RateLimit/],
+    decode_html_entities => 1,
+    %{ $config{twitter_api} },
+);
+print STDERR "Rate limit for this session is "
+  . $nt->rate_limit
+  . " requests per hour.\n"
+  if $DEBUG;
+
+$config{amazon_sqs_api} = read_json_conf( $config{amazon_sqs_config_file} );
+print STDERR "Amazon SQS API config read from $config{amazon_sqs_config_file}\n"
+  if $DEBUG > 1;
+my $sqs = new Amazon::SQS::Simple( $config{amazon_sqs_api}{access_key},
+    $config{amazon_sqs_api}{secret_key} );
+my $amazon_q = $sqs->CreateQueue('nno_notifications_queue');
+
+while (1) {
+    print STDERR "Polling for DMs\n" if $DEBUG;
+    eval {
+        my %params;
+        if ( $state{last_dm} ) {
+            $params{since_id} = $state{last_dm};
+        }
+        my $statuses;
+        my $statuses = $nt->direct_messages( \%params );
+        for my $status ( reverse(@$statuses) ) {
+            notify( "Twitter DM: \""
+                  . $status->{text}
+                  . "\" from "
+                  . $status->{sender}{screen_name} . " ("
+                  . $status->{sender}{name} . ") @ "
+                  . $status->{created_at} );
+            print Dumper $status if $DEBUG > 2;
+            if ( $state{last_dm} < $status->{id} ) {
+                $state{last_dm} = $status->{id};
+                write_state();
+            }
+        }
+    };
+    if ( my $err = $@ ) {
+        die $@ unless blessed $err && $err->isa('Net::Twitter::Error');
+        warn "HTTP Response Code: ", $err->code, "\n",
+          "HTTP Message:       ", $err->message, "\n",
+          "Twitter error:      ", $err->error,   "\n";
+    }
+
+    print STDERR "Polling for mentions\n" if $DEBUG;
+    eval {
+        my %params;
+        if ( $state{last_mention} ) {
+            $params{since_id} = $state{last_mention};
+        }
+        my $statuses;
+        my $statuses = $nt->mentions( \%params );
+        for my $status ( reverse(@$statuses) ) {
+            notify( "Twitter mention: \""
+                  . $status->{text}
+                  . "\" from "
+                  . $status->{user}{screen_name} . " ("
+                  . $status->{user}{name} . ") @ "
+                  . $status->{created_at} );
+            print Dumper $status if $DEBUG > 2;
+            if ( $state{last_mention} < $status->{id} ) {
+                $state{last_mention} = $status->{id};
+                write_state();
+            }
+        }
+    };
+    if ( my $err = $@ ) {
+        die $@ unless blessed $err && $err->isa('Net::Twitter::Error');
+        warn "HTTP Response Code: ", $err->code, "\n",
+          "HTTP Message:       ", $err->message, "\n",
+          "Twitter error:      ", $err->error,   "\n";
+    }
+
+    my $sleep_time = $nt->until_rate(1.3);
+    print STDERR
+      "Sleeping $sleep_time seconds, so as not to hit the rate limit.\n"
+      if $DEBUG;
+    print STDERR "We have "
+      . $nt->rate_remaining
+      . " requests remaining until "
+      . localtime( $nt->rate_reset ) . ".\n"
+      if $DEBUG;
+    sleep $sleep_time;
+}
+
+#######################################
+
+sub read_json_conf {
+    my $filename = shift;
+    open my $fh, '<', $filename or die "Error opening $filename: $!\n";
+    my $json_conf = do { local $/; <$fh> };
+    my $conf = decode_json($json_conf);
+    return $conf;
+}
+
+sub read_state {
+    die "Could not open state dir \"$config{state_dir}\". Exiting now.\n"
+      unless -d $config{state_dir};
+
+    my $data = do {
+        if ( open my $fh, '<', $config{state_dir} . '/state' ) {
+            local $/;
+            <$fh>;
+        }
+        else { undef }
+    };
+    eval $data;
+
+    print STDERR "Just read the state, got this:\n", Dumper \%state, "\n"
+      if $DEBUG > 1;
+}
+
+sub write_state {
+    my $dd = Data::Dumper->new( [ \%state ], [qw(*state)] );
+
+    print STDERR "Preserving state information.\n" if $DEBUG > 1;
+    my $fh;
+    if ( !open( $fh, '>', $config{state_dir} . '/state' ) ) {
+        print STDERR "Unable to store state information: $!\n";
+        notify("Error: Unable to store state information");
+    }
+    print $fh $dd->Dump;
+    close $fh;
+}
+
+sub notify {
+    my $msg = shift;
+
+    $msg = uri_escape($msg);
+    print STDERR "Sending notification: \"$msg\"\n" if $DEBUG > 1;
+    $amazon_q->SendMessage("$msg");
+}

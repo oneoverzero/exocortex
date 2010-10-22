@@ -1,3 +1,5 @@
 exocortex-collectors-server.cfg
 exocortex-butler.cfg
 exocortex-analysers-server.cfg
+amazon_sqs.cfg
+twitter_app.cfg
